@@ -12,7 +12,11 @@
     "prisma:studio": "prisma studio",
     "prisma:push": "prisma db push",
     "prisma:seed": "prisma generate && tsx prisma/seed.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest --passWithNoTests --runInBand",
+    "test:route": "tsx src/tests/route.service.test.ts",
+    "test:compliance": "tsx src/tests/compliance.service.test.ts",
+    "test:bank": "tsx src/tests/bank.service.test.ts",
+    "test:pool": "tsx src/tests/pool.service.test.ts"
   },
   "keywords": [],
   "author": "",
@@ -28,8 +32,11 @@
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
+    "@types/jest": "^30.0.0",
     "@types/node": "^24.10.0",
+    "jest": "^30.2.0",
     "nodemon": "^3.1.10",
+    "ts-jest": "^29.4.5",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   }
