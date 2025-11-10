@@ -1,35 +1,24 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useMemo, useState } from "react";
+import AppHeader from "./adaptors/ui/components/layout/Header";
+import TabNavigation from "./adaptors/ui/components/layout/TabNavigation";
+import PageContainer from "./adaptors/ui/components/layout/PageContainer";
+import { TABS, DEFAULT_TAB, type TabId } from "./adaptors/ui/config/tabs.config";
+import "./index.css";
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const [activeId, setActiveId] = useState<TabId>(DEFAULT_TAB);
+  const activeTab = useMemo(
+    () => TABS.find((tab) => tab.id === activeId) ?? TABS[0],
+    [activeId],
+  );
 
   return (
-    <>
-      <div className='text-3xl'>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1 className='text-2xl font-bold underline text-red-400'>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <main className="min-h-screen bg-gray-50 text-gray-900">
+      <AppHeader />
+      <section className="mx-auto max-w-6xl px-6 py-8">
+        <TabNavigation tabs={TABS} activeId={activeId} onChange={(id) => setActiveId(id as TabId)} />
+        <PageContainer>{activeTab.render()}</PageContainer>
+      </section>
+    </main>
+  );
 }
-
-export default App

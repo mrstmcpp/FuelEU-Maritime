@@ -1,0 +1,3 @@
+export const CONSTANTS = {
+  TARGET_INTENSITY_GCO2E_PER_MJ: 89.3368,
+};
