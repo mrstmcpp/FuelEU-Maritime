@@ -2,7 +2,7 @@ import { IBankEntryRepository } from "../../ports/bankEntry.repository.port";
 import { IShipComplianceRepository } from "../../ports/shipCompliance.repository.port";
 import { BankEntry } from "../../domain/bankEntry.entity";
 import { ShipCompliance } from "../../domain/shipCompliance.entity";
-import { CONSTANTS } from "../../../shared/config/constants.js";
+import { CONSTANTS } from "../../../shared/config/constants";
 
 export class BankService {
   private readonly bankRepo: IBankEntryRepository;

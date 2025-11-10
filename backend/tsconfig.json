@@ -1,7 +1,6 @@
 {
   "compilerOptions": {
     // File Layout
-    "rootDir": "./src",
     "outDir": "./dist",
 
     // Environment Settings
@@ -36,6 +35,6 @@
     "resolveJsonModule": true,            // ✅ Allows importing JSON files directly
     "incremental": true                   // ✅ Faster recompilation
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "dist" , "tests"]
+  "include": ["src", "tests"],
+  "exclude": ["node_modules", "dist"]
 }

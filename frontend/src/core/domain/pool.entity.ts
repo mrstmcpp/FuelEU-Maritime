@@ -7,6 +7,11 @@ export interface PoolMember {
 export interface Pool {
   id: number;
   year: number;
-  members: PoolMember[];
+  members: {
+    shipId: number;
+    cbBefore: number;
+    cbAfter: number;
+  }[];
   createdAt: Date;
+  updatedAt?: Date;
 }

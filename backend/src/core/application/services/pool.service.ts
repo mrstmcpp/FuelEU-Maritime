@@ -33,8 +33,12 @@ export class PoolingService {
       updatedAt: new Date(),
     }));
 
-    const surplus = updatedMembers.filter((m) => m.cbBefore > 0).sort((a, b) => b.cbBefore - a.cbBefore);
-    const deficits = updatedMembers.filter((m) => m.cbBefore < 0).sort((a, b) => a.cbBefore - b.cbBefore);
+    const surplus = updatedMembers
+      .filter((m) => m.cbBefore > 0)
+      .sort((a, b) => b.cbBefore - a.cbBefore);
+    const deficits = updatedMembers
+      .filter((m) => m.cbBefore < 0)
+      .sort((a, b) => a.cbBefore - b.cbBefore);
 
     for (const deficit of deficits) {
       for (const donor of surplus) {
@@ -48,9 +52,19 @@ export class PoolingService {
     }
 
     // ✅ Validation after redistribution
+    // ✅ Validation after redistribution (FuelEU Rule)
     const totalAfter = updatedMembers.reduce((acc, m) => acc + m.cbAfter, 0);
-    if (Math.abs(totalAfter) > 0.0001) {
-      throw new Error("Redistribution error: pool does not balance to zero");
+
+    // Pool must not end up negative overall
+    if (totalAfter < -0.0001) {
+      throw new Error("Redistribution error: total pool CB cannot be negative");
+    }
+
+    // Slight positive leftover (unspent surplus) is fine
+    if (Math.abs(totalAfter) > 0.0001 && totalAfter > 0) {
+      console.warn(
+        `⚠️ Pool not perfectly balanced (+${totalAfter.toFixed(3)}), continuing`
+      );
     }
 
     await this.poolMemberRepo.bulkCreate(updatedMembers);

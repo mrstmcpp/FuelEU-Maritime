@@ -11,12 +11,10 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prisma:push": "prisma db push",
-    "prisma:seed": "tsx prisma/seed.ts",
-    "test": "jest --passWithNoTests --runInBand",
-    "test:route": "tsx src/tests/route.service.test.ts",
-    "test:compliance": "tsx src/tests/compliance.service.test.ts",
-    "test:bank": "tsx src/tests/bank.service.test.ts",
-    "test:pool": "tsx src/tests/pool.service.test.ts"
+    "prisma:seed": "prisma generate && tsx prisma/seed.ts",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "keywords": [],
   "author": "",

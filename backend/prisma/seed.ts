@@ -7,68 +7,48 @@ dotenv.config();
 const prisma = new PrismaClient();
 
 async function main() {
-  const routes = [
-    {
-      routeId: "R001",
-      vesselType: "Container",
-      fuelType: "HFO",
-      year: 2024,
-      ghgIntensity: 91.0,
-      fuelConsumption: 5000,
-      distance: 12000,
-      totalEmissions: 4500,
-      isBaseline: true,
-    },
-    {
-      routeId: "R002",
-      vesselType: "BulkCarrier",
-      fuelType: "LNG",
-      year: 2024,
-      ghgIntensity: 88.0,
-      fuelConsumption: 4800,
-      distance: 11500,
-      totalEmissions: 4200,
-      isBaseline: false,
-    },
-    {
-      routeId: "R003",
-      vesselType: "Tanker",
-      fuelType: "MGO",
-      year: 2024,
-      ghgIntensity: 93.5,
-      fuelConsumption: 5100,
-      distance: 12500,
-      totalEmissions: 4700,
-      isBaseline: false,
-    },
-    {
-      routeId: "R004",
-      vesselType: "RoRo",
-      fuelType: "HFO",
-      year: 2025,
-      ghgIntensity: 89.2,
-      fuelConsumption: 4900,
-      distance: 11800,
-      totalEmissions: 4300,
-      isBaseline: false,
-    },
-    {
-      routeId: "R005",
-      vesselType: "Container",
-      fuelType: "LNG",
-      year: 2025,
-      ghgIntensity: 90.5,
-      fuelConsumption: 4950,
-      distance: 11900,
-      totalEmissions: 4400,
-      isBaseline: false,
-    },
-  ];
+  console.log("🌱 Starting database seed...");
 
-  await prisma.route.deleteMany();
-  await prisma.route.createMany({ data: routes });
+  // --- CLEAN OLD DATA (optional but recommended in dev)
+  await prisma.poolMember.deleteMany();
+  await prisma.pool.deleteMany();
+  await prisma.bankEntry.deleteMany();
+  await prisma.shipCompliance.deleteMany();
+  await prisma.ship.deleteMany();
 
-  console.log("✅ Seed data inserted into 'routes' table successfully!");
+  // --- CREATE DEMO SHIPS
+  const ships = await prisma.ship.createMany({
+    data: [
+      { shipId: 101 },
+      { shipId: 102 },
+      { shipId: 103 },
+    ],
+  });
+  console.log(`🚢 Created ${ships.count} ships`);
+
+  // --- COMPLIANCE DATA (CB values)
+  await prisma.shipCompliance.createMany({
+    data: [
+      { shipId: 101, year: 2023, cbGco2eq: 15.2 },
+      { shipId: 101, year: 2024, cbGco2eq: -4.8 },
+      { shipId: 102, year: 2023, cbGco2eq: 8.4 },
+      { shipId: 102, year: 2024, cbGco2eq: 2.1 },
+      { shipId: 103, year: 2024, cbGco2eq: 0.0 },
+    ],
+  });
+  console.log("✅ Seeded compliance records");
+
+  // --- BANK ENTRIES (some surpluses banked from 2023)
+  await prisma.bankEntry.createMany({
+    data: [
+      { shipId: 101, year: 2023, amountGco2eq: 15.2 }, // surplus from 2023
+      { shipId: 102, year: 2023, amountGco2eq: 8.4 },
+      { shipId: 101, year: 2024, amountGco2eq: -4.8 }, // applied deficit
+    ],
+  });
+  console.log("🏦 Seeded bank entries");
+
+  console.log("🎉 Seeding completed successfully!");
 }
 
 main()

@@ -1316,6 +1316,27 @@ export async function getAdjustedCompliance(year: number): Promise<
 ```
 - **Chatgpt** - `mock data for compliance page & disable button if invalid rest logic stays same`
 - **Chatgpt** - `we have banking tab ready bt currently api is not working properly . first of all i m giving you code i have then you can add or subtract whatever necessary `
+- **Chatgpt** - `pooling tab not fetching data from compliance/adjusted-cb end point also after POST on createpool checking in network tab says pool doesn't balance to zero `
+
+`on post req to create pool api endpiont Redistribution error: pool does not balance to zero this is still there on create pool. resolve it, issues is in abckend fix there`
+```
+const totalAfter = updatedMembers.reduce((acc, m) => acc + m.cbAfter, 0);
+
+    // Pool must not end up negative overall
+    if (totalAfter < -0.0001) {
+      throw new Error("Redistribution error: total pool CB cannot be negative");
+    }
+
+    // Slight positive leftover (unspent surplus) is fine
+    if (Math.abs(totalAfter) > 0.0001 && totalAfter > 0) {
+      console.warn(
+        `⚠️ Pool not perfectly balanced (+${totalAfter.toFixed(3)}), continuing`
+      );
+    }
+```
+- **Cursor** - `write unit tests for all services . use jest and add script in package.json`
+
+
 
 
 
