@@ -28,7 +28,7 @@ export function RouteTable({ routes, onSetBaseline }: Props) {
           {headers.map((h) => (
             <div
               key={h}
-              className="p-3 text-center whitespace-nowrap select-none"
+              className="p-3 text-center overflow-hidden select-none"
             >
               {h}
             </div>
@@ -43,7 +43,11 @@ export function RouteTable({ routes, onSetBaseline }: Props) {
             routes.map((r) => (
               <div
                 key={r.id}
-                className="grid grid-cols-10 items-center hover:bg-blue-50 transition-colors"
+                className={`grid grid-cols-10 items-center transition-colors ${
+                  r.isBaseline
+                    ? "bg-green-50 hover:bg-green-100 border-l-4 border-green-500"
+                    : "hover:bg-blue-50"
+                }`}
               >
                 <div className="p-3 text-center font-mono text-gray-900">
                   {r.routeId}
@@ -57,19 +61,23 @@ export function RouteTable({ routes, onSetBaseline }: Props) {
                 <div className="p-3 text-center">{r.fuelConsumption}</div>
                 <div className="p-3 text-center">{r.distance}</div>
                 <div className="p-3 text-center">{r.totalEmissions}</div>
-                <div className="p-3 text-center">
+                <div className="p-3 text-center font-semibold">
                   {r.isBaseline ? (
-                    <span className="text-green-600 font-semibold">Yes</span>
+                    <span className="text-green-700">Yes</span>
                   ) : (
                     <span className="text-gray-400">No</span>
                   )}
                 </div>
                 <div className="p-3 text-center">
                   <button
-                    className="rounded-md bg-blue-600 px-3 py-1 text-white text-xs font-medium shadow hover:bg-blue-700 transition"
+                    className={`rounded-md px-3 py-1 text-xs font-medium shadow transition ${
+                      r.isBaseline
+                        ? "bg-green-600 text-white hover:bg-green-700"
+                        : "bg-blue-600 text-white hover:bg-blue-700"
+                    }`}
                     onClick={() => onSetBaseline(r.routeId)}
                   >
-                    Set Baseline
+                    {r.isBaseline ? "Active" : "Set Baseline"}
                   </button>
                 </div>
               </div>

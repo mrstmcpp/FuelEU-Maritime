@@ -872,7 +872,36 @@ export default function App() {
 ```
 - **CHatgpt** - `make dummy banking , comparison , pooling pages as of now`
 - **Chatgpt** - `route table's content is overlapping on small screensizes, fix the responsiveness`
+- **Chatgpt** - `why everytime route is fetched after setting a differnert baseline on frontend, is in different order.. `
+`no problem is in backend as postman is also giving same response after setting a baseline` 
+ **Not solved yet**
+- **CHatgpt** - `i also need these data in my db ... should i make a different table and link through FK or should have in single route table?` => (KPIs dataset image)
+```
+Having seperate table is more future proof bt overkill for now. so going with same route table.
 
+model Route {
+  id              Int      @id @default(autoincrement())
+  routeId         String   @map("route_id")
+  vesselType      String   @map("vessel_type")
+  fuelType        String   @map("fuel_type")
+  year            Int
+  ghgIntensity    Float    @map("ghg_intensity")
+  fuelConsumption Float    @map("fuel_consumption")
+  distance        Float
+  totalEmissions  Float    @map("total_emissions")
+  isBaseline      Boolean  @default(false) @map("is_baseline")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("routes")
+  @@index([routeId, year])
+}
+
+```
+
+- **Chatgpt** - `lets write cntrollers nd routes for banking endpoint & write only GET /banking/records?shipId&year POST /banking/bankPOST /banking/apply`
+- **Copilot** - `fixed some errors using copilot suggestions like not implemeted the interface method`
+- **cursor** - `problem in db connection getting error while hitting health api. earlier it was working fine now creating problem cna you check why is it happening???`
 
 
 

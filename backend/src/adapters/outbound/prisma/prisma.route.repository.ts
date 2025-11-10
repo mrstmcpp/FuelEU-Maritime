@@ -9,13 +9,13 @@ import { Route } from "../../../core/domain/route.entity.js";
  */
 export class PrismaRouteRepository implements IRouteRepository {
   /**
-   * Fetch all routes ordered by year (ascending).
+   * Fetch all routes ordered by year (ascending), then routeId (asc).
    */
   async findAll(): Promise<Route[]> {
     const routes = await prisma.route.findMany({
-      orderBy: { year: "asc" },
+      orderBy: [{ year: "asc" }, { routeId: "asc" }],
     });
-    return routes.map(this.mapDecimalFields);
+    return routes.map(this.mapNumericFields);
   }
 
   /**
@@ -26,7 +26,7 @@ export class PrismaRouteRepository implements IRouteRepository {
       where: { year },
       orderBy: { routeId: "asc" },
     });
-    return routes.map(this.mapDecimalFields);
+    return routes.map(this.mapNumericFields);
   }
 
   /**
@@ -34,7 +34,7 @@ export class PrismaRouteRepository implements IRouteRepository {
    */
   async findById(id: number): Promise<Route | null> {
     const route = await prisma.route.findUnique({ where: { id } });
-    return route ? this.mapDecimalFields(route) : null;
+    return route ? this.mapNumericFields(route) : null;
   }
 
   /**
@@ -42,56 +42,61 @@ export class PrismaRouteRepository implements IRouteRepository {
    */
   async findByRouteId(routeId: string): Promise<Route | null> {
     const route = await prisma.route.findFirst({ where: { routeId } });
-    return route ? this.mapDecimalFields(route) : null;
+    return route ? this.mapNumericFields(route) : null;
   }
 
   /**
-   * Mark a route as baseline and unset any previous baseline.
+   * Mark a route as baseline and unset previous baseline for same year.
    */
   async setBaseline(routeId: string): Promise<Route> {
-    const existing = await prisma.route.findFirst({ where: { routeId } });
-    if (!existing) throw new Error(`Route ${routeId} not found.`);
+    return await prisma.$transaction(async (tx) => {
+      const route = await tx.route.findFirst({ where: { routeId } });
+      if (!route) throw new Error("Route not found");
 
-    // Unset any existing baselines
-    await prisma.route.updateMany({
-      where: { isBaseline: true },
-      data: { isBaseline: false },
+      // Unset other baselines for the same year
+      await tx.route.updateMany({
+        where: { year: route.year },
+        data: { isBaseline: false },
+      });
+
+      // Set this route as baseline
+      const updated = await tx.route.update({
+        where: { id: route.id },
+        data: { isBaseline: true },
+      });
+
+      return this.mapNumericFields(updated);
     });
-
-    // Set the new baseline
-    const updated = await prisma.route.update({
-      where: { id: existing.id },
-      data: { isBaseline: true },
-    });
-
-    return this.mapDecimalFields(updated);
   }
 
   /**
-   * Fetch all baseline routes (usually only one exists).
+   * Fetch all baseline routes.
    */
   async findBaselines(): Promise<Route[]> {
-    const routes = await prisma.route.findMany({
-      where: { isBaseline: true },
-    });
-    return routes.map(this.mapDecimalFields);
+    const routes = await prisma.route.findMany({ where: { isBaseline: true } });
+    return routes.map(this.mapNumericFields);
   }
 
   /**
-   * Create a new route record.
+   * Create a new route.
    */
-  async create(data: Omit<Route, "id" | "createdAt" | "updatedAt">): Promise<Route> {
+  async create(
+    data: Omit<Route, "id" | "createdAt" | "updatedAt">
+  ): Promise<Route> {
     const created = await prisma.route.create({ data });
-    return this.mapDecimalFields(created);
+    return this.mapNumericFields(created);
   }
 
   /**
-   * Converts Prisma Decimal fields to JS numbers.
+   * Converts numeric/decimal fields from Prisma (Decimal) to JS numbers.
    */
-  private mapDecimalFields(route: any): Route {
+  private mapNumericFields(route: any): Route {
     return {
       ...route,
       ghgIntensity: Number(route.ghgIntensity),
+      fuelConsumption: Number(route.fuelConsumption),
+      distance: Number(route.distance),
+      totalEmissions: Number(route.totalEmissions),
     };
   }
 }

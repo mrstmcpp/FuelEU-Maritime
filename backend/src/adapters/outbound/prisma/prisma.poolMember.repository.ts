@@ -6,11 +6,11 @@ import { toNumberFields, toNumberFieldsArray } from "../../../shared/config/util
 /**
  * PrismaPoolMemberRepository
  * Handles PoolMember persistence using Prisma ORM.
- * Provides CRUD methods and ensures Decimal precision handling.
+ * Provides CRUD + bulk insert methods.
  */
 export class PrismaPoolMemberRepository implements IPoolMemberRepository {
   /**
-   * 🔍 Find all members of a given pool, sorted by cbBefore (descending).
+   * 🔍 Find all members of a given pool
    */
   async findByPoolId(poolId: number): Promise<PoolMember[]> {
     const members = await prisma.poolMember.findMany({
@@ -21,7 +21,7 @@ export class PrismaPoolMemberRepository implements IPoolMemberRepository {
   }
 
   /**
-   * 🔍 Find all pool memberships for a given ship.
+   * 🔍 Find all pools a given ship is part of
    */
   async findByShipId(shipId: number): Promise<PoolMember[]> {
     const members = await prisma.poolMember.findMany({
@@ -32,7 +32,7 @@ export class PrismaPoolMemberRepository implements IPoolMemberRepository {
   }
 
   /**
-   * ➕ Add a new member to a pool.
+   * ➕ Add a single member
    */
   async addMember(
     data: Omit<PoolMember, "createdAt" | "updatedAt">
@@ -42,26 +42,27 @@ export class PrismaPoolMemberRepository implements IPoolMemberRepository {
   }
 
   /**
-   * ✏️ Update the `cbAfter` value for a specific pool member.
+   * 💥 Bulk insert multiple members (used during pool creation)
    */
-  async updateCbAfter(
-    poolId: number,
-    shipId: number,
-    cbAfter: number
-  ): Promise<PoolMember> {
-    const updated = await prisma.poolMember.update({
-      where: { poolId_shipId: { poolId, shipId } }, // ✅ works because of named composite key
-      data: { cbAfter },
+  async bulkCreate(members: PoolMember[]): Promise<void> {
+    if (!members.length) return;
+    await prisma.poolMember.createMany({
+      data: members.map((m) => ({
+        poolId: m.poolId,
+        shipId: m.shipId,
+        cbBefore: m.cbBefore,
+        cbAfter: m.cbAfter,
+      })),
+      skipDuplicates: true,
     });
-    return toNumberFields(updated, ["cbBefore", "cbAfter"]) as unknown as PoolMember;
   }
 
   /**
-   * ❌ Delete a member from a specific pool.
+   * 🗑️ Delete a specific member from a pool
    */
   async deleteMember(poolId: number, shipId: number): Promise<void> {
     await prisma.poolMember.delete({
-      where: { poolId_shipId: { poolId, shipId } }, // ✅ composite primary key
+      where: { poolId_shipId: { poolId, shipId } },
     });
   }
 }

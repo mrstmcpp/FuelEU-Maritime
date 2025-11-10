@@ -6,7 +6,8 @@ import prisma from "../db/prisma.js";
 // Import modular route groups
 import complianceRoutes from "../../adapters/inbound/http/routes/compliance.routes.js";
 import routeRoutes from "../../adapters/inbound/http/routes/route.routes.js";
-
+import bankingRoutes from "../../adapters/inbound/http/routes/banking.routes.js";
+import poolingRoutes from "../../adapters/inbound/http/routes/pooling.routes.js";
 // Load environment variables
 dotenv.config();
 
@@ -45,6 +46,8 @@ app.get("/health", async (_req: Request, res: Response) => {
 // ───────────────────────────────
 app.use("/compliance", complianceRoutes);
 app.use("/routes", routeRoutes);
+app.use("/banking", bankingRoutes);
+app.use("/pools", poolingRoutes);
 
 // Root API doc
 app.get("/api", (_req: Request, res: Response) => {

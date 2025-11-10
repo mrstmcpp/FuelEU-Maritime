@@ -11,7 +11,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prisma:push": "prisma db push",
-    "prisma:seed": "prisma generate && tsx prisma/seed.ts",
+    "prisma:seed": "tsx prisma/seed.ts",
     "test": "jest --passWithNoTests --runInBand",
     "test:route": "tsx src/tests/route.service.test.ts",
     "test:compliance": "tsx src/tests/compliance.service.test.ts",

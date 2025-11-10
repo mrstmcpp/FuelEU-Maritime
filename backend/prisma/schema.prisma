@@ -18,13 +18,18 @@ datasource db {
 /////////////////////////////////////////////////////////////
 
 model Route {
-  id           Int       @id @default(autoincrement())
-  routeId      String    @map("route_id")
-  year         Int
-  ghgIntensity Decimal   @map("ghg_intensity")
-  isBaseline   Boolean   @default(false) @map("is_baseline")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  id              Int      @id @default(autoincrement())
+  routeId         String   @map("route_id")
+  vesselType      String   @map("vessel_type")
+  fuelType        String   @map("fuel_type")
+  year            Int
+  ghgIntensity    Float    @map("ghg_intensity")
+  fuelConsumption Float    @map("fuel_consumption")
+  distance        Float
+  totalEmissions  Float    @map("total_emissions")
+  isBaseline      Boolean  @default(false) @map("is_baseline")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   @@map("routes")
   @@index([routeId, year])

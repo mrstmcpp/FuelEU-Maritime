@@ -1,56 +1,66 @@
-import { IPoolRepository } from "../../ports/pool.repository.port";
-import { IPoolMemberRepository } from "../../ports/poolMember.repository.port";
-import { Pool } from "../../domain/pool.entity";
-import { PoolMember } from "../../domain/poolMember.entity";
-import { CONSTANTS } from "../../../shared/config/constants.js";
+import { IPoolRepository } from "../../ports/pool.repository.port.js";
+import { IPoolMemberRepository } from "../../ports/poolMember.repository.port.js";
+import { Pool } from "../../domain/pool.entity.js";
+import { PoolMember } from "../../domain/poolMember.entity.js";
 
-type PoolMemberInput = {
-  shipId: number;
-  cbBefore: number;
-};
+export class PoolingService {
+  constructor(
+    private readonly poolRepo: IPoolRepository,
+    private readonly poolMemberRepo: IPoolMemberRepository
+  ) {}
 
-export class PoolService {
-  private readonly poolRepo: IPoolRepository;
-  private readonly memberRepo: IPoolMemberRepository;
+  /**
+   * Create a new pool with redistribution logic
+   */
+  async createPool(
+    year: number,
+    members: { shipId: number; cbBefore: number }[]
+  ): Promise<{ pool: Pool; members: PoolMember[] }> {
+    if (!members.length) throw new Error("No members provided for pooling");
 
-  constructor(poolRepo: IPoolRepository, memberRepo: IPoolMemberRepository) {
-    this.poolRepo = poolRepo;
-    this.memberRepo = memberRepo;
+    const totalCB = members.reduce((acc, m) => acc + m.cbBefore, 0);
+    if (totalCB < 0) throw new Error("Invalid pool — total CB must be ≥ 0");
+
+    const pool = await this.poolRepo.create(year);
+    const poolId = pool.id;
+
+    const updatedMembers: PoolMember[] = members.map((m) => ({
+      poolId,
+      shipId: m.shipId,
+      cbBefore: m.cbBefore,
+      cbAfter: m.cbBefore,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }));
+
+    const surplus = updatedMembers.filter((m) => m.cbBefore > 0).sort((a, b) => b.cbBefore - a.cbBefore);
+    const deficits = updatedMembers.filter((m) => m.cbBefore < 0).sort((a, b) => a.cbBefore - b.cbBefore);
+
+    for (const deficit of deficits) {
+      for (const donor of surplus) {
+        if (deficit.cbAfter >= 0) break;
+        if (donor.cbAfter <= 0) continue;
+
+        const transfer = Math.min(donor.cbAfter, Math.abs(deficit.cbAfter));
+        donor.cbAfter -= transfer;
+        deficit.cbAfter += transfer;
+      }
+    }
+
+    // ✅ Validation after redistribution
+    const totalAfter = updatedMembers.reduce((acc, m) => acc + m.cbAfter, 0);
+    if (Math.abs(totalAfter) > 0.0001) {
+      throw new Error("Redistribution error: pool does not balance to zero");
+    }
+
+    await this.poolMemberRepo.bulkCreate(updatedMembers);
+    return { pool, members: updatedMembers };
   }
 
   /**
-   * Create a pool for a given year with initial members.
-   * Each member starts with cbAfter = cbBefore.
-   * Sum of cbBefore must be >= POOL_MIN_TOTAL_CB_REQUIRED.
+   * List all pools with members for a given year
    */
-  async createPool(year: number, members: PoolMemberInput[]): Promise<{ pool: Pool; members: PoolMember[] }> {
-    const total = members.reduce((sum, m) => sum + m.cbBefore, 0);
-    if (total < CONSTANTS.POOL_MIN_TOTAL_CB_REQUIRED) {
-      throw new Error("Invalid pool: total CB must be >= 0.");
-    }
-
-    const existing = await this.poolRepo.findByYear(year);
-    if (existing) {
-      await this.memberRepo.findByPoolId(existing.id).then(async (ms) => {
-        for (const m of ms) await this.memberRepo.deleteMember(existing.id, m.shipId);
-      });
-      await this.poolRepo.deleteByYear(year);
-    }
-
-    const pool = await this.poolRepo.create(year);
-    const createdMembers: PoolMember[] = [];
-    for (const m of members) {
-      const created = await this.memberRepo.addMember({
-        poolId: pool.id,
-        shipId: m.shipId,
-        cbBefore: m.cbBefore,
-        cbAfter: m.cbBefore,
-      });
-      createdMembers.push(created);
-    }
-
-    return { pool, members: createdMembers };
+  async listPools(year?: number): Promise<Pool[]> {
+    return this.poolRepo.findAll(year);
   }
 }
-
-
