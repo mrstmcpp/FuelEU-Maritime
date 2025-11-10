@@ -1335,7 +1335,7 @@ const totalAfter = updatedMembers.reduce((acc, m) => acc + m.cbAfter, 0);
     }
 ```
 - **Cursor** - `write unit tests for all services . use jest and add script in package.json`
-
+- **Cursor** - `can you write tests for  frontend`
 
 
 

@@ -52,7 +52,6 @@ export class PoolingService {
     }
 
     // ✅ Validation after redistribution
-    // ✅ Validation after redistribution (FuelEU Rule)
     const totalAfter = updatedMembers.reduce((acc, m) => acc + m.cbAfter, 0);
 
     // Pool must not end up negative overall
