@@ -11,6 +11,6 @@ const service = new PoolingService(poolRepo, poolMemberRepo);
 const controller = new PoolingController(service);
 
 router.post("/", controller.createPool);
-router.get("/", controller.listPools);
+
 
 export default router;

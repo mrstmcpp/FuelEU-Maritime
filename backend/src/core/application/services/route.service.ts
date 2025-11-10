@@ -50,14 +50,17 @@ export class RouteService {
     const baseline = routes.find((r) => r.isBaseline);
 
     if (!baseline) {
-      throw new Error("No baseline route set. Please mark one route as baseline first.");
+      throw new Error(
+        "No baseline route set. Please mark one route as baseline first."
+      );
     }
 
     const baselineValue = baseline.ghgIntensity;
 
     return routes.map((route) => {
-      const percentDiff = ((route.ghgIntensity / baselineValue) - 1) * 100;
-      const compliant = route.ghgIntensity <= CONSTANTS.TARGET_INTENSITY_GCO2E_PER_MJ;
+      const percentDiff = (route.ghgIntensity / baselineValue - 1) * 100;
+      const compliant =
+        route.ghgIntensity <= CONSTANTS.TARGET_INTENSITY_GCO2E_PER_MJ;
 
       return {
         routeId: route.routeId,

@@ -902,6 +902,404 @@ model Route {
 - **Chatgpt** - `lets write cntrollers nd routes for banking endpoint & write only GET /banking/records?shipId&year POST /banking/bankPOST /banking/apply`
 - **Copilot** - `fixed some errors using copilot suggestions like not implemeted the interface method`
 - **cursor** - `problem in db connection getting error while hitting health api. earlier it was working fine now creating problem cna you check why is it happening???`
+- **chatgpt** - `write pools controller. it contains a single controllers POST /pools and u have to validaate sum of all CB >= 0 & enforce Deficit ship cannot exit worse & Surplus ship cannot exit negative. also Greedy allocation: Sort members desc by CB & Transfer surplus to deficits and return Return cb_after per member`
+- **Chatgpt** - `only single route can be set as baseline remove rest if changed`
+```
+async setBaseline(routeId: string): Promise<Route> {
+    const routes = await this.routeRepo.findAll();
+    const routeToUpdate = routes.find((r) => r.routeId === routeId);
+
+    if (!routeToUpdate) {
+      throw new Error(`Route with ID ${routeId} not found.`);
+    }
+
+    for (const route of routes) {
+      if (route.isBaseline && route.routeId !== routeId) {
+        await this.routeRepo.setBaseline(route.routeId);
+      }
+    }
+    const updated = await this.routeRepo.setBaseline(routeId);
+    return updated;
+  }
+``` 
+- **Chatgpt** - `lets make banking page with provieded rest apis in picture get data from them nd show on page & use react-hot-toast`
+```
+import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
+import { getBankingRecords, applyBanking } from "../../../infrastructure/api/banking.api";
+import type { BankEntry } from "../../../../core/domain/bankEntry.entity";
+
+export default function BankingPage() {
+  const [records, setRecords] = useState<BankEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [applying, setApplying] = useState(false);
+
+  const loadRecords = async () => {
+    try {
+      setLoading(true);
+      const data = await getBankingRecords();
+      setRecords(data);
+    } catch {
+      toast.error("Failed to fetch banking records");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApplyBanking = async () => {
+    try {
+      setApplying(true);
+      const res = await applyBanking();
+      if (res.success) {
+        toast.success(res.message || "Banking applied successfully");
+        await loadRecords();
+      } else {
+        toast.error(res.message || "Failed to apply banking");
+      }
+    } catch {
+      toast.error("Error applying banking logic");
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRecords();
+  }, []);
+
+  return (
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold text-gray-800">Carbon Banking</h2>
+        <button
+          onClick={handleApplyBanking}
+          disabled={applying}
+          className={`rounded-md px-4 py-2 text-sm font-medium text-white shadow transition ${
+            applying
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-blue-600 hover:bg-blue-700"
+          }`}
+        >
+          {applying ? "Applying..." : "Apply Banking"}
+        </button>
+      </div>
+
+      {/* Table */}
+      {loading ? (
+        <div className="text-center text-gray-500 py-10 animate-pulse">
+          Loading records...
+        </div>
+      ) : records.length === 0 ? (
+        <div className="text-center text-gray-400 py-10">No banking records found.</div>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+          <div className="grid grid-cols-3 bg-gray-100 text-gray-700 font-medium text-sm border-b border-gray-200">
+            <div className="p-3 text-center">Ship ID</div>
+            <div className="p-3 text-center">Year</div>
+            <div className="p-3 text-center">Amount (gCO₂eq)</div>
+          </div>
+
+          {records.map((r) => (
+            <div
+              key={`${r.shipId}-${r.year}`}
+              className={`grid grid-cols-3 text-sm text-center border-b border-gray-100 ${
+                r.amountGco2eq >= 0 ? "bg-green-50" : "bg-red-50"
+              }`}
+            >
+              <div className="p-3 font-mono">{r.shipId}</div>
+              <div className="p-3">{r.year}</div>
+              <div
+                className={`p-3 font-semibold ${
+                  r.amountGco2eq >= 0 ? "text-green-700" : "text-red-700"
+                }`}
+              >
+                {r.amountGco2eq.toFixed(2)}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+```
+- **chatgpt** - `simiilarly make comparison section for dashboard use recharts`
+```
+import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
+import { getRouteComparisons } from "../../../infrastructure/api/compare.api";
+import type { RouteComparison } from "../../../../core/domain/comparison.entity";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
+
+export default function ComparePage() {
+  const [data, setData] = useState<RouteComparison[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadComparisons = async () => {
+    try {
+      setLoading(true);
+      const res = await getRouteComparisons();
+      setData(res);
+      toast.success("Comparison data loaded");
+    } catch {
+      toast.error("Failed to load comparison data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadComparisons();
+  }, []);
+
+  return (
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold text-gray-800">GHG Intensity Comparison</h2>
+        <button
+          onClick={loadComparisons}
+          disabled={loading}
+          className={`rounded-md px-4 py-2 text-sm font-medium text-white shadow transition ${
+            loading
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-blue-600 hover:bg-blue-700"
+          }`}
+        >
+          {loading ? "Loading..." : "Refresh"}
+        </button>
+      </div>
+
+      {/* Table */}
+      {loading ? (
+        <div className="text-center text-gray-500 py-10 animate-pulse">
+          Fetching comparison data...
+        </div>
+      ) : data.length === 0 ? (
+        <div className="text-center text-gray-400 py-10">No comparison data available.</div>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+          <div className="grid grid-cols-4 bg-gray-100 text-gray-700 font-medium text-sm border-b border-gray-200">
+            <div className="p-3 text-center">Route ID</div>
+            <div className="p-3 text-center">GHG Intensity (gCO₂e/MJ)</div>
+            <div className="p-3 text-center">% Diff vs Baseline</div>
+            <div className="p-3 text-center">Compliant</div>
+          </div>
+
+          {data.map((r) => (
+            <div
+              key={r.routeId}
+              className={`grid grid-cols-4 text-sm text-center border-b border-gray-100 ${
+                r.compliant ? "bg-green-50" : "bg-red-50"
+              }`}
+            >
+              <div className="p-3 font-mono">{r.routeId}</div>
+              <div className="p-3">{r.ghgIntensity.toFixed(2)}</div>
+              <div className="p-3">{r.percentDiff.toFixed(2)}%</div>
+              <div className="p-3 font-semibold">
+                {r.compliant ? (
+                  <span className="text-green-700">✅ Yes</span>
+                ) : (
+                  <span className="text-red-700">❌ No</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Chart */}
+      {!loading && data.length > 0 && (
+        <div className="h-80 bg-white border border-gray-200 rounded-xl shadow-sm p-4">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data}>
+              <XAxis dataKey="routeId" />
+              <YAxis />
+              <Tooltip />
+              <ReferenceLine
+                y={89.3368}
+                stroke="#f97316"
+                strokeDasharray="3 3"
+                label={{ value: "Target (89.33)", position: "top", fill: "#f97316" }}
+              />
+              <Bar dataKey="ghgIntensity" fill="#3b82f6" name="GHG Intensity" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+- **Chatpgt** - `lets make pooling page similary`
+```
+import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
+import { createPool, getPools } from "../../../infrastructure/api/pool.api";
+import type { Pool } from "../../../../core/domain/pool.entity";
+
+export default function PoolingPage() {
+  const [pools, setPools] = useState<Pool[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [year, setYear] = useState<number>(2025);
+  const [members, setMembers] = useState([
+    { shipId: 1, cbBefore: 100 },
+    { shipId: 2, cbBefore: -80 },
+  ]);
+
+  const loadPools = async () => {
+    try {
+      setLoading(true);
+      const res = await getPools();
+      setPools(res);
+    } catch {
+      toast.error("Failed to load pools");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPools();
+  }, []);
+
+  const handleCreatePool = async () => {
+    try {
+      setCreating(true);
+      const pool = await createPool(year, members);
+      toast.success(`Pool created for ${year}`);
+      setPools((prev) => [pool, ...prev]);
+    } catch {
+      toast.error("Failed to create pool");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  return (
+    <div className="p-6 space-y-8">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold text-gray-800">Emission Pooling</h2>
+        <button
+          onClick={handleCreatePool}
+          disabled={creating}
+          className={`rounded-md px-4 py-2 text-sm font-medium text-white shadow transition ${
+            creating
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-blue-600 hover:bg-blue-700"
+          }`}
+        >
+          {creating ? "Creating..." : "Create Pool"}
+        </button>
+      </div>
+
+      {/* Input Section */}
+      <div className="rounded-lg border border-gray-200 bg-white p-4 space-y-4 shadow-sm">
+        <div className="flex gap-4 items-center">
+          <label className="text-gray-600 text-sm">Year:</label>
+          <input
+            type="number"
+            value={year}
+            onChange={(e) => setYear(Number(e.target.value))}
+            className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm"
+          />
+        </div>
+
+        <div className="space-y-2">
+          {members.map((m, idx) => (
+            <div key={idx} className="flex items-center gap-4">
+              <input
+                type="number"
+                value={m.shipId}
+                onChange={(e) => {
+                  const updated = [...members];
+                  updated[idx].shipId = Number(e.target.value);
+                  setMembers(updated);
+                }}
+                placeholder="Ship ID"
+                className="w-20 rounded-md border border-gray-300 px-2 py-1 text-sm"
+              />
+              <input
+                type="number"
+                value={m.cbBefore}
+                onChange={(e) => {
+                  const updated = [...members];
+                  updated[idx].cbBefore = Number(e.target.value);
+                  setMembers(updated);
+                }}
+                placeholder="CB Before"
+                className="w-28 rounded-md border border-gray-300 px-2 py-1 text-sm"
+              />
+            </div>
+          ))}
+
+          <button
+            className="mt-2 text-sm text-blue-600 hover:text-blue-800"
+            onClick={() => setMembers([...members, { shipId: 0, cbBefore: 0 }])}
+          >
+            + Add Ship
+          </button>
+        </div>
+      </div>
+
+      {/* Pools Display */}
+      {loading ? (
+        <div className="text-center text-gray-500 py-10 animate-pulse">
+          Loading pools...
+        </div>
+      ) : pools.length === 0 ? (
+        <div className="text-center text-gray-400 py-10">No pools found.</div>
+      ) : (
+        <div className="space-y-6">
+          {pools.map((pool) => (
+            <div
+              key={pool.id}
+              className="rounded-lg border border-gray-200 bg-white shadow-sm p-4"
+            >
+              <div className="text-lg font-semibold text-gray-800 mb-3">
+                Pool #{pool.id} — Year {pool.year}
+              </div>
+
+              <div className="grid grid-cols-3 bg-gray-100 text-gray-700 font-medium text-sm border-b border-gray-200">
+                <div className="p-3 text-center">Ship ID</div>
+                <div className="p-3 text-center">CB Before</div>
+                <div className="p-3 text-center">CB After</div>
+              </div>
+
+              {pool.members.map((m) => (
+                <div
+                  key={m.shipId}
+                  className={`grid grid-cols-3 text-sm text-center border-b border-gray-100 ${
+                    m.cbAfter >= 0 ? "bg-green-50" : "bg-red-50"
+                  }`}
+                >
+                  <div className="p-3 font-mono">{m.shipId}</div>
+                  <div className="p-3">{m.cbBefore.toFixed(2)}</div>
+                  <div
+                    className={`p-3 font-semibold ${
+                      m.cbAfter >= 0 ? "text-green-700" : "text-red-700"
+                    }`}
+                  >
+                    {m.cbAfter.toFixed(2)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+```
+further : 
+`add option to remove ships like when we added three ships now i want to remove last one`
+
+
 
 
 

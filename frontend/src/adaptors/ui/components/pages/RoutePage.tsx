@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getAllRoutes, setBaseline } from "../../../infrastructure/api/routeApi";
+import { getAllRoutes, setBaseline } from "../../../infrastructure/api/route.api";
 import type { Route } from "../../../../core/domain/route.entity";
 import { RouteTable } from "../RouteTable";
 import PageContainer from "../layout/PageContainer";

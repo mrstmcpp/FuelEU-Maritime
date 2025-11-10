@@ -50,22 +50,26 @@ export class PrismaRouteRepository implements IRouteRepository {
    */
   async setBaseline(routeId: string): Promise<Route> {
     return await prisma.$transaction(async (tx) => {
+      // Find the route to update
       const route = await tx.route.findFirst({ where: { routeId } });
       if (!route) throw new Error("Route not found");
 
-      // Unset other baselines for the same year
+      // Unset all existing baselines (in one query)
       await tx.route.updateMany({
-        where: { year: route.year },
+        where: { isBaseline: true },
         data: { isBaseline: false },
       });
 
-      // Set this route as baseline
+      // Set the new one
       const updated = await tx.route.update({
         where: { id: route.id },
         data: { isBaseline: true },
       });
 
-      return this.mapNumericFields(updated);
+      return {
+        ...updated,
+        ghgIntensity: Number(updated.ghgIntensity),
+      };
     });
   }
 
