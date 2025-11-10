@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -12,4 +9,95 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+// Basic data - Route information with GHG intensity
+model Route {
+  id           Int      @id @default(autoincrement())
+  routeId      String      @map("route_id")
+  year         Int
+  ghgIntensity Decimal    @map("ghg_intensity")
+  isBaseline   Boolean  @default(false) @map("is_baseline")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("routes")
+  @@index([routeId, year])
+}
+
+
+model Ship {
+  id            Int              @id @default(autoincrement())
+  shipId        Int              @unique @map("ship_id")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+  
+  compliance    ShipCompliance[]
+  bankEntries   BankEntry[]
+  poolMembers   PoolMember[]
+
+  @@map("ships")
+}
+
+
+model ShipCompliance {
+  id         Int      @id @default(autoincrement())
+  shipId     Int      @map("ship_id")
+  year       Int
+  cbGco2eq   Decimal    @map("cb_gco2eq")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  
+  ship       Ship     @relation(fields: [shipId], references: [shipId], onDelete: Cascade)
+
+  @@map("ship_compliance")
+  @@unique([shipId, year])
+  @@index([shipId, year])
+}
+
+// Banked surplus - Bank entries for ships
+model BankEntry {
+  id          Int      @id @default(autoincrement())
+  shipId      Int      @map("ship_id")
+  year        Int
+  amountGco2eq Decimal  @map("amount_gco2eq")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  ship        Ship     @relation(fields: [shipId], references: [shipId], onDelete: Cascade)
+
+  @@map("bank_entries")
+  @@unique([shipId, year])
+  @@index([shipId, year])
+}
+
+// Pool registry - Pools created for compliance
+model Pool {
+  id         Int          @id @default(autoincrement())
+  year       Int
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+  
+  members    PoolMember[]
+
+  @@map("pools")
+  @@index([year])
+}
+
+// Allocations - Pool members with carbon balance before/after
+model PoolMember {
+  poolId     Int      @map("pool_id")
+  shipId     Int      @map("ship_id")
+  cbBefore   Decimal    @map("cb_before")
+  cbAfter    Decimal    @map("cb_after")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  
+  pool       Pool     @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  ship       Ship     @relation(fields: [shipId], references: [shipId], onDelete: Cascade)
+
+  @@id([poolId, shipId])
+  @@map("pool_members")
+  @@index([poolId])
+  @@index([shipId])
 }

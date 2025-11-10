@@ -5,28 +5,37 @@
     "outDir": "dist",
 
     // Environment Settings
-    "module": "commonjs",
-    "target": "es2021",
-    "lib": ["ESNext"],
-    "types": ["node"],
+    "module": "CommonJS",             // ✅ Node uses CommonJS by default
+    "moduleResolution": "node",
+    "target": "ES2021",               // ✅ Modern JS syntax for async/await etc.
+    "lib": ["ESNext"],                // ✅ Includes modern JS built-ins
+    "types": ["node"],                // ✅ Gives you process, __dirname, etc.
 
     // Outputs
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
 
-    // Strict Typechecking
+    // Strict Typechecking (Strong TypeScript)
     "strict": true,
+    "noImplicitAny": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
 
     // Style & Module Rules
-    "jsx": "react-jsx",
-    "verbatimModuleSyntax": true,
-    "isolatedModules": true,
-    "noUncheckedSideEffectImports": true,
-    "moduleDetection": "force",
-    "skipLibCheck": true
+    "esModuleInterop": true,          // ✅ Allows `import express from "express"`
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+
+    // Optional extras
+    "allowSyntheticDefaultImports": true, // ✅ Compatibility with JS modules
+    "resolveJsonModule": true,            // ✅ Allows importing JSON files directly
+    "incremental": true                   // ✅ Faster recompilation
   },
-  "include": ["src"]
+  "include": ["src", "src/tests"],
+  "exclude": ["node_modules", "dist"]
 }
