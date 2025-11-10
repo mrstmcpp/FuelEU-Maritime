@@ -72,3 +72,4 @@ export interface IRouteRepository {
 }
 
 ```
+- *** Github Copilot *** - Took help of copilot for inline code complettion and implemented each repository in outbound/prisma.
