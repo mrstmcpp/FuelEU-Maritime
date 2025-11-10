@@ -17,5 +17,6 @@ const controller = new ComplianceController(service);
 
 router.get("/cb", controller.computeAndStoreCB);
 router.get("/adjusted-cb", controller.getAdjustedCB);
+router.get("/cb", controller.getComplianceByYear);
 
 export default router;

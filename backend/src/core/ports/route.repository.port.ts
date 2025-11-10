@@ -1,7 +1,11 @@
 import { Route } from "../domain/route.entity";
 
 export interface IRouteRepository {
-  findAll(): Promise<Route[]>;
+  findAll(filters?: {
+    vesselType?: string;
+    fuelType?: string;
+    year?: number;
+  }): Promise<Route[]>;
   findByYear(year: number): Promise<Route[]>;
   findById(id: number): Promise<Route | null>;
   findByRouteId(routeId: string): Promise<Route | null>;

@@ -5,7 +5,7 @@ import { ShipCompliance } from "../../../core/domain/shipCompliance.entity.js";
 /**
  * PrismaShipComplianceRepository
  * Handles persistence and retrieval of ship compliance data (CB records)
- * using Prisma ORM with full decimal-to-number conversion.
+ * using Prisma ORM with consistent Decimal → number conversion.
  */
 export class PrismaShipComplianceRepository implements IShipComplianceRepository {
   /**
@@ -31,16 +31,26 @@ export class PrismaShipComplianceRepository implements IShipComplianceRepository
 
   /**
    * 🔍 Find a specific record by shipId and year.
-   * Uses the named composite key `shipId_year` for safe lookups.
    */
   async findByShipIdAndYear(
     shipId: number,
     year: number
   ): Promise<ShipCompliance | null> {
     const record = await prisma.shipCompliance.findUnique({
-      where: { shipId_year: { shipId, year } }, // ✅ Uses named composite key
+      where: { shipId_year: { shipId, year } },
     });
     return record ? this.mapDecimalFields(record) : null;
+  }
+
+  /**
+   * 📅 Find all compliance records for a specific year.
+   */
+  async findByYear(year: number): Promise<ShipCompliance[]> {
+    const records = await prisma.shipCompliance.findMany({
+      where: { year },
+      orderBy: { shipId: "asc" },
+    });
+    return records.map(this.mapDecimalFields);
   }
 
   /**
@@ -54,6 +64,21 @@ export class PrismaShipComplianceRepository implements IShipComplianceRepository
   }
 
   /**
+   * ✏️ Update a compliance record by shipId + year.
+   */
+  async updateByShipIdAndYear(
+    shipId: number,
+    year: number,
+    data: Partial<ShipCompliance>
+  ): Promise<ShipCompliance> {
+    const updated = await prisma.shipCompliance.update({
+      where: { shipId_year: { shipId, year } },
+      data,
+    });
+    return this.mapDecimalFields(updated);
+  }
+
+  /**
    * ❌ Delete all compliance records for a specific ship.
    */
   async deleteByShipId(shipId: number): Promise<void> {
@@ -61,7 +86,7 @@ export class PrismaShipComplianceRepository implements IShipComplianceRepository
   }
 
   /**
-   * Utility: Converts Prisma Decimal to number for consistent return types.
+   * 🧮 Utility — Convert Prisma Decimal to number.
    */
   private mapDecimalFields(record: any): ShipCompliance {
     return {

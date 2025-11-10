@@ -3,8 +3,9 @@ import { mapRouteResponse } from "../mappers/route.mapper";
 
 const BASE_URL = "http://localhost:3000";
 
-export async function getAllRoutes(): Promise<Route[]> {
-  const res = await fetch(`${BASE_URL}/routes`);
+export async function getAllRoutes(query?: string): Promise<Route[]> {
+  const url = query ? `${BASE_URL}/routes?${query}` : `${BASE_URL}/routes`;
+  const res = await fetch(url);
   const json = await res.json();
   return json.data.map(mapRouteResponse);
 }
@@ -18,7 +19,12 @@ export async function setBaseline(routeId: string): Promise<Route> {
 }
 
 export async function compareRoutes(): Promise<
-  { routeId: string; ghgIntensity: number; percentDiff: number; compliant: boolean }[]
+  {
+    routeId: string;
+    ghgIntensity: number;
+    percentDiff: number;
+    compliant: boolean;
+  }[]
 > {
   const res = await fetch(`${BASE_URL}/routes/comparison`);
   const json = await res.json();

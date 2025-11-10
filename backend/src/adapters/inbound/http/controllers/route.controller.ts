@@ -13,7 +13,14 @@ export class RouteController {
   /** GET /routes */
   getAllRoutes = async (req: Request, res: Response): Promise<void> => {
     try {
-      const routes = await this.routeService.getAllRoutes();
+      const filters: Record<string, any> = {};
+
+      if (req.query.vesselType)
+        filters.vesselType = String(req.query.vesselType);
+      if (req.query.fuelType) filters.fuelType = String(req.query.fuelType);
+      if (req.query.year) filters.year = Number(req.query.year);
+
+      const routes = await this.routeService.getAllRoutes(filters);
       res.status(200).json({ success: true, data: routes });
     } catch (err: any) {
       res.status(500).json({ success: false, message: err.message });
@@ -25,7 +32,9 @@ export class RouteController {
     try {
       const routeId = req.params.id;
       if (!routeId) {
-        res.status(400).json({ success: false, message: "Route id is required" });
+        res
+          .status(400)
+          .json({ success: false, message: "Route id is required" });
         return;
       }
       const updated = await this.routeService.setBaseline(routeId);

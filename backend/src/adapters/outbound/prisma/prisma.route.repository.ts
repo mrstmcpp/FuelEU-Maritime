@@ -11,11 +11,20 @@ export class PrismaRouteRepository implements IRouteRepository {
   /**
    * Fetch all routes ordered by year (ascending), then routeId (asc).
    */
-  async findAll(): Promise<Route[]> {
-    const routes = await prisma.route.findMany({
+  async findAll(filters?: {
+    vesselType?: string;
+    fuelType?: string;
+    year?: number;
+  }): Promise<Route[]> {
+    const where: any = {};
+    if (filters?.vesselType) where.vesselType = filters.vesselType;
+    if (filters?.fuelType) where.fuelType = filters.fuelType;
+    if (filters?.year) where.year = filters.year;
+
+    return prisma.route.findMany({
+      where,
       orderBy: [{ year: "asc" }, { routeId: "asc" }],
     });
-    return routes.map(this.mapNumericFields);
   }
 
   /**

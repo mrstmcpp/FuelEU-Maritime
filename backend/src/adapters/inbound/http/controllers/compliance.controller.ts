@@ -2,15 +2,19 @@ import { Request, Response } from "express";
 import { ComplianceService } from "../../../../core/application/services/compliance.service.js";
 
 /**
- * Handles Compliance-related endpoints:
- * - GET /compliance/cb?shipId&year
+ * ComplianceController
+ * 
+ * Endpoints:
+ * - GET /compliance/cb?shipId&year&fuelConsumptionTons&actualIntensity
  * - GET /compliance/adjusted-cb?shipId&year
+ * - GET /compliance/adjusted-cb?year
  */
 export class ComplianceController {
   constructor(private readonly complianceService: ComplianceService) {}
 
-  /** GET /compliance/cb?shipId&year
-   * Computes and stores CB snapshot for given ship/year
+  /** 
+   * 🧮 GET /compliance/cb
+   * Computes and stores CB for given ship & year.
    */
   computeAndStoreCB = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -20,7 +24,10 @@ export class ComplianceController {
       const actualIntensity = Number(req.query.actualIntensity);
 
       if (!shipId || !year || !fuelConsumptionTons || !actualIntensity) {
-        res.status(400).json({ success: false, message: "Missing query parameters." });
+        res.status(400).json({
+          success: false,
+          message: "Missing query parameters: shipId, year, fuelConsumptionTons, actualIntensity required.",
+        });
         return;
       }
 
@@ -37,28 +44,50 @@ export class ComplianceController {
     }
   };
 
-  /** GET /compliance/adjusted-cb?shipId&year
-   * Returns compliance after applying banking or pooling adjustments
+  /** 
+   * 📄 GET /compliance/adjusted-cb
+   * Returns compliance data:
+   *  - If both shipId and year provided → single record
+   *  - If only year provided → all ships for that year
    */
   getAdjustedCB = async (req: Request, res: Response): Promise<void> => {
     try {
-      const shipId = Number(req.query.shipId);
-      const year = Number(req.query.year);
+      const shipId = req.query.shipId ? Number(req.query.shipId) : undefined;
+      const year = req.query.year ? Number(req.query.year) : undefined;
 
-      if (!shipId || !year) {
-        res.status(400).json({ success: false, message: "Missing shipId or year." });
+      if (!year) {
+        res.status(400).json({ success: false, message: "Year is required." });
         return;
       }
 
-      const record = await this.complianceService.getComplianceByYear(shipId, year);
-      if (!record) {
-        res.status(404).json({ success: false, message: "No compliance record found." });
+      // If shipId is given → fetch one
+      if (shipId) {
+        const record = await this.complianceService.getComplianceByYear(shipId, year);
+        if (!record) {
+          res.status(404).json({ success: false, message: "No compliance record found for this ship/year." });
+          return;
+        }
+        res.status(200).json({ success: true, data: record });
         return;
       }
 
-      res.status(200).json({ success: true, data: record });
+      // Otherwise fetch all CBs for that year (for pooling)
+      const cbList = await this.complianceService.getAdjustedCBs(year);
+      res.status(200).json({ success: true, data: cbList });
     } catch (err: any) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(500).json({ success: false, message: err.message });
     }
   };
+
+
+  getComplianceByYear = async (req: Request, res: Response) => {
+  try {
+    const year = Number(req.query.year);
+    const data = await this.complianceService.complianceByYear(year);
+    res.json({ success: true, data });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 }

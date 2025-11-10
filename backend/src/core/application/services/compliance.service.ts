@@ -2,7 +2,6 @@ import { IShipComplianceRepository } from "../../ports/shipCompliance.repository
 import { ShipCompliance } from "../../domain/shipCompliance.entity";
 import { CONSTANTS } from "../../../shared/config/constants";
 
-
 /**
  * ComplianceService
  * Handles calculation, retrieval, and adjustment of Compliance Balances (CB)
@@ -63,8 +62,16 @@ export class ComplianceService {
     return this.repo.findByShipIdAndYear(shipId, year);
   }
 
+
+  async complianceByYear(
+    year: number
+  ): Promise<ShipCompliance | null> {
+    const records = await this.repo.findByYear(year);
+    return records.length > 0 ? records[0] as ShipCompliance : null;
+  }
+
   /**
-   * ✏️ Adjust compliance balance (CB) value, e.g., after pooling or banking.
+   * ✏️ Adjust compliance balance (CB) for a specific ship/year (e.g., after banking/pooling).
    */
   async adjustCB(
     shipId: number,
@@ -74,14 +81,23 @@ export class ComplianceService {
     const record = await this.repo.findByShipIdAndYear(shipId, year);
     if (!record) throw new Error("Compliance record not found.");
 
-    const updatedCB = record.cbGco2eq + adjustment;
+    const updatedCB = Number(record.cbGco2eq) + adjustment;
 
-    await this.repo.deleteByShipId(shipId);
+    // Update rather than delete + recreate
+    return this.repo.updateByShipIdAndYear(shipId, year, { cbGco2eq: updatedCB });
+  }
 
-    return this.repo.create({
-      shipId,
-      year,
-      cbGco2eq: updatedCB,
-    });
+  /**
+   * 📊 Fetch all adjusted CB values for a given year (used by pooling).
+   */
+  async getAdjustedCBs(year: number): Promise<
+    { shipId: number; year: number; adjustedCb: number }[]
+  > {
+    const records = await this.repo.findByYear(year);
+    return records.map((r) => ({
+      shipId: r.shipId,
+      year: r.year,
+      adjustedCb: Number(r.cbGco2eq),
+    }));
   }
 }

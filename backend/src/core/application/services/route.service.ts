@@ -17,8 +17,12 @@ export class RouteService {
   /**
    * Fetch all registered routes.
    */
-  async getAllRoutes(): Promise<Route[]> {
-    return this.routeRepo.findAll();
+  async getAllRoutes(filters?: {
+    vesselType?: string;
+    fuelType?: string;
+    year?: number;
+  }): Promise<Route[]> {
+    return this.routeRepo.findAll(filters);
   }
 
   /**

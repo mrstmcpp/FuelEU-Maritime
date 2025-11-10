@@ -1298,9 +1298,24 @@ export default function PoolingPage() {
 ```
 further : 
 `add option to remove ships like when we added three ships now i want to remove last one`
+- **Chatgpt** - `add filters like vesselType, fuelType, year in routes api and frontend tab providing you service nd controller also frontend `
+```
 
+```
 
-
+- **Chatgpt** - `you have fetched wrong info inside the pooling section, you have to fetch (get) data from compliance/adjusted-cb end point & post on /pools`
+```
+export async function getAdjustedCompliance(year: number): Promise<
+  { shipId: number; adjustedCb: number }[]
+> {
+  const res = await fetch(`${BASE_URL}/compliance/adjusted-cb?year=${year}`);
+  if (!res.ok) throw new Error("Failed to fetch adjusted compliance data");
+  const json = await res.json();
+  return json.data;
+}
+```
+- **Chatgpt** - `mock data for compliance page & disable button if invalid rest logic stays same`
+- **Chatgpt** - `we have banking tab ready bt currently api is not working properly . first of all i m giving you code i have then you can add or subtract whatever necessary `
 
 
 
