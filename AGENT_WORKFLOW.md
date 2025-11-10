@@ -72,4 +72,49 @@ export interface IRouteRepository {
 }
 
 ```
-- *** Github Copilot *** - Took help of copilot for inline code complettion and implemented each repository in outbound/prisma.
+- **Github Copilot** - Took help of copilot for inline code complettion and implemented each repository in outbound/prisma.
+- **ChatGPT** - Provided seed data given in assingment to chatgpt and `write a seed.ts for seeding data to db. make sure you follow the actual schema. also add console logs`
+
+```
+import { PrismaClient } from "../src/generated/prisma";
+
+const prisma = new PrismaClient();
+
+async function main() {
+  const routes = [
+    { routeId: "R001", year: 2024, ghgIntensity: 91.0, isBaseline: true },
+    { routeId: "R002", year: 2024, ghgIntensity: 88.0, isBaseline: false },
+    { routeId: "R003", year: 2024, ghgIntensity: 93.5, isBaseline: false },
+    { routeId: "R004", year: 2025, ghgIntensity: 89.2, isBaseline: false },
+    { routeId: "R005", year: 2025, ghgIntensity: 90.5, isBaseline: false },
+  ];
+
+  await prisma.route.deleteMany();
+
+  for (const route of routes) {
+    await prisma.route.create({ data: route });
+  }
+
+  console.log("✅ Seed data inserted into 'routes' table successfully");
+}
+
+main()
+  .catch((e) => {
+    console.error("❌ Seeding failed:", e);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
+```
+
+- **Cursor** - Wasn't able to run seeding migration. Asked cursor to fix it. 
+`REASON : missing import inside prisma.config.ts`
+```
+import dotenv from "dotenv";
+
+dotenv.config();
+```
+Still not fixed hence instructed
+`Can you check the imports inside prisma configs nd check scripts once in package json ?` 
+[![image.png](https://i.postimg.cc/0QYh4kky/image.png)](https://postimg.cc/MMGsM8fC)
+
