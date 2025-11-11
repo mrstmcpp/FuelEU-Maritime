@@ -7,7 +7,9 @@ import { ShipCompliance } from "../../../core/domain/shipCompliance.entity.js";
  * Handles persistence and retrieval of ship compliance data (CB records)
  * using Prisma ORM with consistent Decimal → number conversion.
  */
-export class PrismaShipComplianceRepository implements IShipComplianceRepository {
+export class PrismaShipComplianceRepository
+  implements IShipComplianceRepository
+{
   /**
    * 📄 Get all compliance records (sorted by year).
    */
@@ -83,6 +85,14 @@ export class PrismaShipComplianceRepository implements IShipComplianceRepository
    */
   async deleteByShipId(shipId: number): Promise<void> {
     await prisma.shipCompliance.deleteMany({ where: { shipId } });
+  }
+
+  async updateCb(shipId: number, year: number, newCb: number): Promise<ShipCompliance> {
+    const updated = await prisma.shipCompliance.update({
+      where: { shipId_year: { shipId, year } },
+      data: { cbGco2eq: newCb },
+    });
+    return this.mapDecimalFields(updated);
   }
 
   /**

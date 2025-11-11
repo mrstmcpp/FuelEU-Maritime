@@ -2,6 +2,8 @@ import { IPoolRepository } from "../../ports/pool.repository.port.js";
 import { IPoolMemberRepository } from "../../ports/poolMember.repository.port.js";
 import { Pool } from "../../domain/pool.entity.js";
 import { PoolMember } from "../../domain/poolMember.entity.js";
+import { PrismaShipComplianceRepository } from "../../../adapters/outbound/prisma/prisma.shipCompliance.repository.js";
+import prisma from "../../../infrastructure/db/prisma.js"; // ensure this is your default prisma export
 
 export class PoolingService {
   constructor(
@@ -11,6 +13,7 @@ export class PoolingService {
 
   /**
    * Create a new pool with redistribution logic
+   * + update compliance CBs after redistribution
    */
   async createPool(
     year: number,
@@ -51,28 +54,32 @@ export class PoolingService {
       }
     }
 
-    // ✅ Validation after redistribution
     const totalAfter = updatedMembers.reduce((acc, m) => acc + m.cbAfter, 0);
-
-    // Pool must not end up negative overall
-    if (totalAfter < -0.0001) {
+    if (totalAfter < -0.0001)
       throw new Error("Redistribution error: total pool CB cannot be negative");
-    }
 
-    // Slight positive leftover (unspent surplus) is fine
     if (Math.abs(totalAfter) > 0.0001 && totalAfter > 0) {
       console.warn(
         `⚠️ Pool not perfectly balanced (+${totalAfter.toFixed(3)}), continuing`
       );
     }
 
-    await this.poolMemberRepo.bulkCreate(updatedMembers);
+    // ✅ Transaction ensures pool + members + compliance update all succeed or rollback together
+    await prisma.$transaction(async (tx) => {
+      // Insert pool members
+      await this.poolMemberRepo.bulkCreate(updatedMembers);
+
+      // Update compliance CBs for all ships
+      const complianceRepo = new PrismaShipComplianceRepository();
+
+      for (const m of updatedMembers) {
+        await complianceRepo.updateCb(m.shipId, year, m.cbAfter);
+      }
+    });
+
     return { pool, members: updatedMembers };
   }
 
-  /**
-   * List all pools with members for a given year
-   */
   async listPools(year?: number): Promise<Pool[]> {
     return this.poolRepo.findAll(year);
   }

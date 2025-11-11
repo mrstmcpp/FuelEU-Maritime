@@ -1,9 +1,10 @@
 import { Request, Response } from "express";
 import { ComplianceService } from "../../../../core/application/services/compliance.service.js";
+import { prisma } from "../../../../infrastructure/db/prisma.js";
 
 /**
  * ComplianceController
- * 
+ *
  * Endpoints:
  * - GET /compliance/cb?shipId&year&fuelConsumptionTons&actualIntensity
  * - GET /compliance/adjusted-cb?shipId&year
@@ -12,7 +13,7 @@ import { ComplianceService } from "../../../../core/application/services/complia
 export class ComplianceController {
   constructor(private readonly complianceService: ComplianceService) {}
 
-  /** 
+  /**
    * 🧮 GET /compliance/cb
    * Computes and stores CB for given ship & year.
    */
@@ -26,7 +27,8 @@ export class ComplianceController {
       if (!shipId || !year || !fuelConsumptionTons || !actualIntensity) {
         res.status(400).json({
           success: false,
-          message: "Missing query parameters: shipId, year, fuelConsumptionTons, actualIntensity required.",
+          message:
+            "Missing query parameters: shipId, year, fuelConsumptionTons, actualIntensity required.",
         });
         return;
       }
@@ -44,7 +46,7 @@ export class ComplianceController {
     }
   };
 
-  /** 
+  /**
    * 📄 GET /compliance/adjusted-cb
    * Returns compliance data:
    *  - If both shipId and year provided → single record
@@ -62,9 +64,15 @@ export class ComplianceController {
 
       // If shipId is given → fetch one
       if (shipId) {
-        const record = await this.complianceService.getComplianceByYear(shipId, year);
+        const record = await this.complianceService.getComplianceByYear(
+          shipId,
+          year
+        );
         if (!record) {
-          res.status(404).json({ success: false, message: "No compliance record found for this ship/year." });
+          res.status(404).json({
+            success: false,
+            message: "No compliance record found for this ship/year.",
+          });
           return;
         }
         res.status(200).json({ success: true, data: record });
@@ -79,15 +87,43 @@ export class ComplianceController {
     }
   };
 
-
   getComplianceByYear = async (req: Request, res: Response) => {
-  try {
-    const year = Number(req.query.year);
-    const data = await this.complianceService.complianceByYear(year);
-    res.json({ success: true, data });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
+    try {
+      const year = Number(req.query.year);
+      const data = await this.complianceService.complianceByYear(year);
+      res.json({ success: true, data });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  };
 
+  getComplianceCB = async (req: Request, res: Response) => {
+    try {
+      const year = Number(req.query.year);
+      if (isNaN(year)) {
+        res
+          .status(400)
+          .json({ success: false, message: "Valid year is required" });
+        return;
+      }
+
+      // ✅ Always fetch via ComplianceService to ensure consistency
+      const cbList = await this.complianceService.getAdjustedCBs(year);
+
+      // ✅ Map to Banking tab format
+      const data = cbList.map((r) => ({
+        shipId: r.shipId,
+        cb_before: Number(r.adjustedCb || 0),
+        cb_after: Number(r.adjustedCb || 0),
+        applied: 0,
+      }));
+
+      res.status(200).json({ success: true, data });
+    } catch (err: any) {
+      console.error("GET /compliance/cb error:", err);
+      res
+        .status(500)
+        .json({ success: false, message: "Failed to fetch compliance CBs" });
+    }
+  };
 }

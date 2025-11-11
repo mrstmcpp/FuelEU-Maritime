@@ -31,4 +31,6 @@ export interface IShipComplianceRepository {
     year: number,
     data: Partial<ShipCompliance>
   ): Promise<ShipCompliance>;
+
+  updateCb(shipId: number, year: number, newCb: number): Promise<ShipCompliance>;
 }

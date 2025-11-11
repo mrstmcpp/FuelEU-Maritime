@@ -1,12 +1,20 @@
 import { Request, Response } from "express";
 import { PoolingService } from "../../../../core/application/services/pool.service.js";
+import { ComplianceService } from "../../../../core/application/services/compliance.service.js";
+import { PrismaShipComplianceRepository } from "../../../outbound/prisma/prisma.shipCompliance.repository.js";
 
 export class PoolingController {
-  constructor(private readonly poolingService: PoolingService) {}
+  private readonly complianceService: ComplianceService;
+
+  constructor(private readonly poolingService: PoolingService) {
+    // ✅ create complianceService to get live CBs from DB
+    this.complianceService = new ComplianceService(new PrismaShipComplianceRepository());
+  }
 
   /**
    * POST /pools
-   * Creates a new pool, validates CB sum, applies greedy redistribution, and saves results.
+   * Creates a new pool, fetches live CBs for given ships,
+   * validates sum, applies redistribution, and persists results.
    */
   createPool = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -16,8 +24,21 @@ export class PoolingController {
         return;
       }
 
-      // 1️⃣ Validate sum of CB >= 0
-      const totalCB = members.reduce((sum, m) => sum + Number(m.cbBefore), 0);
+      // 🔥 Fetch latest CB values for the given ships from DB
+      const shipIds = members.map((m) => Number(m.shipId));
+      const allRecords = await this.complianceService.getAdjustedCBs(year);
+
+      // Filter to only include ships in this pool request
+      const liveMembers = shipIds.map((shipId) => {
+        const record = allRecords.find((r) => r.shipId === shipId);
+        return {
+          shipId,
+          cbBefore: record ? Number(record.adjustedCb) : 0, // default 0 if not found
+        };
+      });
+
+      // 1️⃣ Validate total CB ≥ 0
+      const totalCB = liveMembers.reduce((sum, m) => sum + m.cbBefore, 0);
       if (totalCB < 0) {
         res.status(400).json({
           success: false,
@@ -26,56 +47,16 @@ export class PoolingController {
         return;
       }
 
-      // 2️⃣ Sort by cbBefore descending (surplus first)
-      const sorted = [...members].sort((a, b) => b.cbBefore - a.cbBefore);
-
-      // 3️⃣ Greedy redistribution
-      const updatedMembers = sorted.map((m) => ({
-        ...m,
-        cbAfter: m.cbBefore, // default — may adjust later
-      }));
-
-      let surplusShips = updatedMembers.filter((m) => m.cbBefore > 0);
-      let deficitShips = updatedMembers.filter((m) => m.cbBefore < 0);
-
-      for (const surplus of surplusShips) {
-        let available = surplus.cbBefore;
-
-        for (const deficit of deficitShips) {
-          if (deficit.cbAfter >= 0 || available <= 0) continue; // skip covered or no surplus left
-
-          const needed = Math.abs(deficit.cbAfter);
-          const transfer = Math.min(available, needed);
-
-          deficit.cbAfter += transfer;
-          surplus.cbAfter -= transfer;
-          available -= transfer;
-        }
-      }
-
-      // 4️⃣ Enforce business rules
-      const isValid = updatedMembers.every(
-        (m) =>
-          (m.cbBefore < 0 && m.cbAfter >= m.cbBefore) || // deficits cannot get worse
-          (m.cbBefore > 0 && m.cbAfter >= 0)             // surpluses cannot go negative
-      );
-
-      if (!isValid) {
-        res.status(400).json({
-          success: false,
-          message: "Invalid pool state — violates CB constraints.",
-        });
-        return;
-      }
-
-      // 5️⃣ Persist pool and members via service
-      const poolResult = await this.poolingService.createPool(year, updatedMembers);
+      // 2️⃣ Pass to service to compute redistribution + persist
+      const poolResult = await this.poolingService.createPool(year, liveMembers);
 
       res.status(201).json({
         success: true,
+        message: "Pool created using latest CB values.",
         data: poolResult,
       });
     } catch (err: any) {
+      console.error("Error creating pool:", err);
       res.status(500).json({ success: false, message: err.message });
     }
   };

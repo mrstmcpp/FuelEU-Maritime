@@ -1,16 +1,14 @@
 import { Request, Response } from "express";
 import { BankingService } from "../../../../core/application/services/banking.service.js";
+import { PrismaShipComplianceRepository } from "../../../outbound/prisma/prisma.shipCompliance.repository.js";
 
-/**
- * Handles Banking-related endpoints:
- * - GET /banking/records?shipId&year
- * - POST /banking/bank
- * - POST /banking/apply
- */
 export class BankingController {
   constructor(private readonly bankingService: BankingService) {}
 
-  // ✅ 1. Get all records for a ship (optionally by year)
+  /**
+   * GET /banking/records?shipId&year
+   * Fetch all banking records for a ship (optionally filter by year)
+   */
   getBankingRecords = async (req: Request, res: Response): Promise<void> => {
     try {
       const shipId = Number(req.query.shipId);
@@ -30,7 +28,11 @@ export class BankingController {
     }
   };
 
-  // ✅ 2. Bank positive CB
+  /**
+   * POST /banking/bank
+   * Body: { shipId, year, amountGco2eq }
+   * Store positive CB (surplus) for future use
+   */
   bankPositiveCB = async (req: Request, res: Response): Promise<void> => {
     try {
       const { shipId, year, amountGco2eq } = req.body;
@@ -45,29 +47,23 @@ export class BankingController {
         return;
       }
 
-      const record = await this.bankingService.addBankEntry(shipId, year, amountGco2eq);
-
-      res.status(201).json({
-        success: true,
-        message: `Banked ${amountGco2eq} gCO₂e for year ${year}`,
-        data: {
-          cb_before: 0,
-          applied: 0,
-          cb_after: record.amountGco2eq,
-          year: record.year,
-        },
-      });
+      const record = await this.bankingService.bankPositiveCB(shipId, year, amountGco2eq);
+      res.status(201).json({ success: true, data: record });
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
     }
   };
 
-  // ✅ 3. Apply banked surplus (offset deficit)
+  /**
+   * POST /banking/apply
+   * Body: { shipId, year, applyAmount }
+   * Apply banked CB to offset a deficit (negative CB)
+   */
   applyBankedCB = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { shipId, applyAmount } = req.body;
+      const { shipId, year, applyAmount } = req.body;
 
-      if (!shipId || typeof applyAmount !== "number") {
+      if (!shipId || !year || typeof applyAmount !== "number") {
         res.status(400).json({ success: false, message: "Missing or invalid parameters" });
         return;
       }
@@ -77,17 +73,8 @@ export class BankingController {
         return;
       }
 
-      const result = await this.bankingService.applyBankedSurplus(shipId, applyAmount);
-
-      res.status(200).json({
-        success: true,
-        message: `Applied ${result.applied} gCO₂e from banked surplus`,
-        data: {
-          cb_before: result.applied,
-          applied: result.applied,
-          cb_after: -result.remaining,
-        },
-      });
+      const result = await this.bankingService.applyBankedSurplus(shipId, year, applyAmount);
+      res.status(200).json(result);
     } catch (err: any) {
       res.status(400).json({ success: false, message: err.message });
     }
