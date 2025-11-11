@@ -18,7 +18,7 @@ export default function ComparePage() {
   const [loading, setLoading] = useState(true);
   const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
 
-  // Fetch comparison data
+  // === Fetch data ===
   const loadComparisons = async () => {
     try {
       setLoading(true);
@@ -36,22 +36,21 @@ export default function ComparePage() {
     loadComparisons();
   }, []);
 
-  // Handle bar or row click
   const handleSelect = (routeId: string) => {
     setSelectedRoute((prev) => (prev === routeId ? null : routeId));
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-8 max-w-6xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-gray-800">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-800">
           GHG Intensity Comparison
         </h2>
         <button
           onClick={loadComparisons}
           disabled={loading}
-          className={`rounded-md px-4 py-2 text-sm font-medium text-white shadow transition ${
+          className={`rounded-md px-4 py-2 text-sm font-medium text-white shadow-sm transition ${
             loading
               ? "bg-gray-400 cursor-not-allowed"
               : "bg-blue-600 hover:bg-blue-700"
@@ -71,84 +70,101 @@ export default function ComparePage() {
           No comparison data available.
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
-          <div className="grid grid-cols-4 bg-gray-100 text-gray-700 font-medium text-sm border-b border-gray-200">
-            <div className="p-3 text-center">Route ID</div>
-            <div className="p-3 text-center">GHG Intensity (gCO₂e/MJ)</div>
-            <div className="p-3 text-center">% Diff vs Baseline</div>
-            <div className="p-3 text-center">Compliant</div>
-          </div>
-
-          {data.map((r) => {
-            const isSelected = r.routeId === selectedRoute;
-            return (
-              <div
-                key={r.routeId}
-                onClick={() => handleSelect(r.routeId)}
-                className={`grid grid-cols-4 text-sm text-center border-b border-gray-100 cursor-pointer transition-colors ${
-                  isSelected
-                    ? "bg-blue-100 border-blue-400"
-                    : r.compliant
-                    ? "bg-green-50 hover:bg-green-100"
-                    : "bg-red-50 hover:bg-red-100"
-                }`}
-              >
-                <div className="p-3 font-mono">{r.routeId}</div>
-                <div className="p-3">{r.ghgIntensity.toFixed(2)}</div>
-                <div className="p-3">{r.percentDiff.toFixed(2)}%</div>
-                <div className="p-3 font-semibold">
-                  {r.compliant ? (
-                    <span className="text-green-700">✅ Yes</span>
-                  ) : (
-                    <span className="text-red-700">❌ No</span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
+          <table className="min-w-full text-sm">
+            <thead className="bg-gray-100 text-gray-700 font-medium border-b border-gray-200">
+              <tr>
+                <th className="p-3 text-center whitespace-nowrap">Route ID</th>
+                <th className="p-3 text-center whitespace-nowrap">
+                  GHG Intensity (gCO₂e/MJ)
+                </th>
+                <th className="p-3 text-center whitespace-nowrap">% Diff vs Baseline</th>
+                <th className="p-3 text-center whitespace-nowrap">Compliant</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((r) => {
+                const isSelected = r.routeId === selectedRoute;
+                const bgColor = isSelected
+                  ? "bg-blue-100"
+                  : r.compliant
+                  ? "bg-green-50 hover:bg-green-100"
+                  : "bg-red-50 hover:bg-red-100";
+                return (
+                  <tr
+                    key={r.routeId}
+                    onClick={() => handleSelect(r.routeId)}
+                    className={`cursor-pointer transition-colors border-b border-gray-100 ${bgColor}`}
+                  >
+                    <td className="p-3 font-mono text-center">{r.routeId}</td>
+                    <td className="p-3 text-center">
+                      {r.ghgIntensity.toFixed(2)}
+                    </td>
+                    <td className="p-3 text-center">
+                      {r.percentDiff.toFixed(2)}%
+                    </td>
+                    <td className="p-3 text-center font-semibold">
+                      {r.compliant ? (
+                        <span className="text-green-700">✅ Yes</span>
+                      ) : (
+                        <span className="text-red-700">❌ No</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 
       {/* Chart */}
       {!loading && data.length > 0 && (
-        <div className="h-80 bg-white border border-gray-200 rounded-xl shadow-sm p-4">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={data}
-              onClick={(state) => {
-                const routeId = state?.activeLabel;
-                if (routeId) handleSelect(routeId);
-              }}
-            >
-              <XAxis dataKey="routeId" />
-              <YAxis />
-              <Tooltip />
-              <ReferenceLine
-                y={89.3368}
-                stroke="#f97316"
-                strokeDasharray="3 3"
-                label={{
-                  value: "Target (89.33)",
-                  position: "top",
-                  fill: "#f97316",
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-medium text-gray-800 mb-3">
+            GHG Intensity per Route
+          </h3>
+          <div className="h-64 sm:h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={data}
+                onClick={(state) => {
+                  const routeId = state?.activeLabel;
+                  if (routeId) handleSelect(routeId);
                 }}
-              />
-              <Bar dataKey="ghgIntensity" name="GHG Intensity">
-                {data.map((entry) => {
-                  const isSelected = entry.routeId === selectedRoute;
-                  const color = entry.compliant ? "#22c55e" : "#ef4444";
-                  return (
-                    <Cell
-                      key={entry.routeId}
-                      fill={isSelected ? "#3b82f6" : color}
-                      stroke={isSelected ? "#1d4ed8" : undefined}
-                      strokeWidth={isSelected ? 2 : 1}
-                    />
-                  );
-                })}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+                margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
+              >
+                <XAxis dataKey="routeId" />
+                <YAxis domain={[0, "dataMax + 10"]} />
+                <Tooltip />
+                <ReferenceLine
+                  y={89.33}
+                  stroke="#f97316"
+                  strokeDasharray="3 3"
+                  label={{
+                    value: "Target (89.33)",
+                    position: "top",
+                    fill: "#f97316",
+                    fontSize: 12,
+                  }}
+                />
+                <Bar dataKey="ghgIntensity" name="GHG Intensity">
+                  {data.map((entry) => {
+                    const isSelected = entry.routeId === selectedRoute;
+                    const color = entry.compliant ? "#22c55e" : "#ef4444";
+                    return (
+                      <Cell
+                        key={entry.routeId}
+                        fill={isSelected ? "#3b82f6" : color}
+                        stroke={isSelected ? "#1d4ed8" : undefined}
+                        strokeWidth={isSelected ? 2 : 1}
+                      />
+                    );
+                  })}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       )}
     </div>

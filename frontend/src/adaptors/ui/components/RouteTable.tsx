@@ -45,7 +45,7 @@ export function RouteTable({ routes, onSetBaseline }: Props) {
                 key={r.id}
                 className={`grid grid-cols-10 items-center transition-colors ${
                   r.isBaseline
-                    ? "bg-green-50 hover:bg-green-100 border-l-4 border-green-500"
+                    ? "bg-green-50 hover:bg-green-100 border-2 border-green-500"
                     : "hover:bg-blue-50"
                 }`}
               >
@@ -70,9 +70,10 @@ export function RouteTable({ routes, onSetBaseline }: Props) {
                 </div>
                 <div className="p-3 text-center">
                   <button
+                    disabled={r.isBaseline}
                     className={`rounded-md px-3 py-1 text-xs font-medium shadow transition ${
                       r.isBaseline
-                        ? "bg-green-600 text-white hover:bg-green-700"
+                        ? "bg-gray-400 text-white cursor-not-allowed"
                         : "bg-blue-600 text-white hover:bg-blue-700"
                     }`}
                     onClick={() => onSetBaseline(r.routeId)}

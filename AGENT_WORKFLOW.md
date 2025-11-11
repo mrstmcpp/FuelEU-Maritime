@@ -6,7 +6,7 @@
 - **Cursor IDE Agent** - Used generally for file refractorings.
 
 
-### Prompts 
+## Prompts 
 **Prompts Used**
 - **Cursor IDE AGENT** - `setup a basic backend inside `src/infrastructure/server` with nodejs and typescript + progresql prisma backed also ensure hexagonal archi from given image. `
 ![InitialSetup](https://i.postimg.cc/VktxQkv6/Screenshot-2025-11-10-094923.png)
@@ -1336,9 +1336,39 @@ const totalAfter = updatedMembers.reduce((acc, m) => acc + m.cbAfter, 0);
 ```
 - **Cursor** - `write unit tests for all services . use jest and add script in package.json`
 - **Cursor** - `can you write tests for  frontend`
+- **cursor** - `can you fix responsiveness of each page from pages folder so that i look better on any screen.`
 
 
+## Validations / Corrections
+### I have already mentioned corrections inside the prompts sections as I was directing agents to perform.
+Additionally, I have :
+- Verified all generated endpoints using postman.
+- Verified data entries in db through prisma studio.
+- Cross checked with different AI agents.
 
 
+## Observations
+- **Cursor Agent** was great for bulk refactors but sometimes missed type import. Since, can perform in bulk it was very useful.
+- **ChatGPT** is kind of all rounder just you have to feed it all data and keep your minds open while using its code.
+If it guided well, it is highly useful.
+- **Copilot** inline completions are saviors as well as best for some minor refractors inside VS Code itself.
 
+## Best practices followed
+- Validated generated codes with testing through console.log and postman as well as some unit tests.
+- Used a single chat instance of ChatGPT. Due to that it was always having reference of previous files and practices.
+- Tried to stay modular during code writing. As instructed Agents many time to use reusable modular components. Although can't continued till end due to some contraints.
+- Avoided writing boilerplate codes using Cursor.
+- As I majorly worked with Javascript, Java , Spring Boot , TypeScript was new to me. It wasn't possible for someone like me to write whole code without help of these AI agents.
 
+## Future Improvements
+- Role based + JWT based authentications such as Captain , Chief etc.
+- Integration of Google Maps API so that more info about routes (After refractoring DB) can be obtained.
+- Redis caching as fetching same data each time from DB is costly.
+- Reusable components can be there and  currently there is lot of code duplications.
+- Robust logging so that failures can be taracked.
+- Retry logic patterns so that if any thing breaks , it can get back by itself.
+- Charts nd visualizations can be improved moire.
+- Dark mode support.
+- Rate limiting on APIs.
+- Export to PDF or excel or CSV.
+- Containerize this whole project using docker compose.
