@@ -2,7 +2,9 @@
 
 import { BankingService } from "../src/core/application/services/banking.service";
 import type { IBankEntryRepository } from "../src/core/ports/bankEntry.repository.port";
+import type { IShipComplianceRepository } from "../src/core/ports/shipCompliance.repository.port";
 import type { BankEntry } from "../src/core/domain/bankEntry.entity";
+import type { ShipCompliance } from "../src/core/domain/shipCompliance.entity";
 
 // 🧩 Helper to make test records easily
 function makeBankEntry(partial: Partial<BankEntry>): BankEntry {
@@ -11,6 +13,17 @@ function makeBankEntry(partial: Partial<BankEntry>): BankEntry {
     shipId: partial.shipId ?? 0,
     year: partial.year ?? 2024,
     amountGco2eq: partial.amountGco2eq ?? 0,
+    createdAt: partial.createdAt ?? new Date(),
+    updatedAt: partial.updatedAt ?? new Date(),
+  };
+}
+
+function makeShipCompliance(partial: Partial<ShipCompliance>): ShipCompliance {
+  return {
+    id: partial.id ?? 0,
+    shipId: partial.shipId ?? 0,
+    year: partial.year ?? 2024,
+    cbGco2eq: partial.cbGco2eq ?? 0,
     createdAt: partial.createdAt ?? new Date(),
     updatedAt: partial.updatedAt ?? new Date(),
   };
@@ -76,9 +89,80 @@ class MockBankEntryRepository implements IBankEntryRepository {
   }
 }
 
+class MockShipComplianceRepository implements IShipComplianceRepository {
+  private records: ShipCompliance[];
+
+  constructor(initial: ShipCompliance[] = []) {
+    this.records = initial;
+  }
+
+  async findAll(): Promise<ShipCompliance[]> {
+    return [...this.records];
+  }
+
+  async findByShipId(shipId: number): Promise<ShipCompliance[]> {
+    return this.records.filter((r) => r.shipId === shipId);
+  }
+
+  async findByShipIdAndYear(
+    shipId: number,
+    year: number
+  ): Promise<ShipCompliance | null> {
+    return (
+      this.records.find((r) => r.shipId === shipId && r.year === year) ?? null
+    );
+  }
+
+  async create(
+    data: Omit<ShipCompliance, "id" | "createdAt" | "updatedAt">
+  ): Promise<ShipCompliance> {
+    const created = makeShipCompliance({
+      ...data,
+      id: (this.records.at(-1)?.id ?? 0) + 1,
+    });
+    this.records.push(created);
+    return created;
+  }
+
+  async deleteByShipId(shipId: number): Promise<void> {
+    this.records = this.records.filter((r) => r.shipId !== shipId);
+  }
+
+  async findByYear(year: number): Promise<ShipCompliance[]> {
+    return this.records.filter((r) => r.year === year);
+  }
+
+  async updateByShipIdAndYear(
+    shipId: number,
+    year: number,
+    data: Partial<ShipCompliance>
+  ): Promise<ShipCompliance> {
+    const idx = this.records.findIndex(
+      (r) => r.shipId === shipId && r.year === year
+    );
+    if (idx === -1) throw new Error("Record not found");
+    this.records[idx] = { ...this.records[idx]!, ...data };
+    return this.records[idx]!;
+  }
+
+  async updateCb(shipId: number, year: number, newCb: number): Promise<ShipCompliance> {
+    const idx = this.records.findIndex(
+      (r) => r.shipId === shipId && r.year === year
+    );
+    if (idx === -1) throw new Error("Record not found");
+    this.records[idx] = {
+      ...this.records[idx]!,
+      cbGco2eq: newCb,
+      updatedAt: new Date(),
+    };
+    return this.records[idx]!;
+  }
+}
+
 // 🧪 Tests
 describe("BankingService", () => {
   let repo: MockBankEntryRepository;
+  let complianceRepo: MockShipComplianceRepository;
   let service: BankingService;
 
   beforeEach(() => {
@@ -87,7 +171,14 @@ describe("BankingService", () => {
       makeBankEntry({ id: 2, shipId: 101, year: 2024, amountGco2eq: 300 }),
       makeBankEntry({ id: 3, shipId: 202, year: 2024, amountGco2eq: 1000 }),
     ]);
-    service = new BankingService(repo);
+    complianceRepo = new MockShipComplianceRepository([
+      makeShipCompliance({ id: 1, shipId: 101, year: 2025, cbGco2eq: -400 }),
+      makeShipCompliance({ id: 2, shipId: 101, year: 2026, cbGco2eq: -600 }),
+      makeShipCompliance({ id: 3, shipId: 101, year: 2027, cbGco2eq: -1000 }),
+      makeShipCompliance({ id: 4, shipId: 101, year: 2028, cbGco2eq: 0 }),
+      makeShipCompliance({ id: 5, shipId: 999, year: 2024, cbGco2eq: -50 }),
+    ]);
+    service = new BankingService(repo, complianceRepo);
   });
 
   // ➕ addBankEntry - Create new entry
@@ -150,7 +241,7 @@ describe("BankingService", () => {
 
   // 💰 applyBankedSurplus - FIFO logic
   it("should apply banked surplus using FIFO (oldest first)", async () => {
-    const result = await service.applyBankedSurplus(101, 400);
+    const result = await service.applyBankedSurplus(101, 2025, 400);
     expect(result.applied).toBe(400);
     expect(result.remaining).toBe(0);
 
@@ -163,7 +254,7 @@ describe("BankingService", () => {
   });
 
   it("should apply surplus across multiple entries in FIFO order", async () => {
-    const result = await service.applyBankedSurplus(101, 600);
+    const result = await service.applyBankedSurplus(101, 2026, 600);
     expect(result.applied).toBe(600);
     expect(result.remaining).toBe(0);
 
@@ -177,7 +268,7 @@ describe("BankingService", () => {
   });
 
   it("should handle applying more than available surplus", async () => {
-    const result = await service.applyBankedSurplus(101, 1000);
+    const result = await service.applyBankedSurplus(101, 2027, 1000);
     expect(result.applied).toBe(800); // Only 800 available (500 + 300)
     expect(result.remaining).toBe(200);
 
@@ -191,7 +282,7 @@ describe("BankingService", () => {
 
   it("should skip entries with zero or negative amounts", async () => {
     await service.addBankEntry(101, 2025, -50); // Add negative entry
-    const result = await service.applyBankedSurplus(101, 100);
+    const result = await service.applyBankedSurplus(101, 2028, 100);
     expect(result.applied).toBe(100);
     expect(result.remaining).toBe(0);
 
@@ -204,15 +295,18 @@ describe("BankingService", () => {
     const emptyRepo = new MockBankEntryRepository([
       makeBankEntry({ id: 1, shipId: 999, year: 2024, amountGco2eq: -100 }),
     ]);
-    const emptyService = new BankingService(emptyRepo);
+    const emptyComplianceRepo = new MockShipComplianceRepository([
+      makeShipCompliance({ id: 1, shipId: 999, year: 2024, cbGco2eq: -50 }),
+    ]);
+    const emptyService = new BankingService(emptyRepo, emptyComplianceRepo);
 
-    const result = await emptyService.applyBankedSurplus(999, 50);
+    const result = await emptyService.applyBankedSurplus(999, 2024, 50);
     expect(result.applied).toBe(0);
     expect(result.remaining).toBe(50);
   });
 
   it("should handle zero apply amount", async () => {
-    const result = await service.applyBankedSurplus(101, 0);
+    const result = await service.applyBankedSurplus(101, 2028, 0);
     expect(result.applied).toBe(0);
     expect(result.remaining).toBe(0);
 

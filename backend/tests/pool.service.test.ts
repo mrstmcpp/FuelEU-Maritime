@@ -3,8 +3,10 @@
 import { PoolingService } from "../src/core/application/services/pool.service";
 import type { IPoolRepository } from "../src/core/ports/pool.repository.port";
 import type { IPoolMemberRepository } from "../src/core/ports/poolMember.repository.port";
+import type { IShipComplianceRepository } from "../src/core/ports/shipCompliance.repository.port";
 import type { Pool } from "../src/core/domain/pool.entity";
 import type { PoolMember } from "../src/core/domain/poolMember.entity";
+import type { ShipCompliance } from "../src/core/domain/shipCompliance.entity";
 
 // 🧩 Helper to make test records easily
 function makePool(partial: Partial<Pool>): Pool {
@@ -22,6 +24,17 @@ function makePoolMember(partial: Partial<PoolMember>): PoolMember {
     shipId: partial.shipId ?? 0,
     cbBefore: partial.cbBefore ?? 0,
     cbAfter: partial.cbAfter ?? 0,
+    createdAt: partial.createdAt ?? new Date(),
+    updatedAt: partial.updatedAt ?? new Date(),
+  };
+}
+
+function makeShipCompliance(partial: Partial<ShipCompliance>): ShipCompliance {
+  return {
+    id: partial.id ?? 0,
+    shipId: partial.shipId ?? 0,
+    year: partial.year ?? 2024,
+    cbGco2eq: partial.cbGco2eq ?? 0,
     createdAt: partial.createdAt ?? new Date(),
     updatedAt: partial.updatedAt ?? new Date(),
   };
@@ -79,16 +92,98 @@ class MockPoolMemberRepository implements IPoolMemberRepository {
   }
 }
 
+class MockShipComplianceRepository implements IShipComplianceRepository {
+  private records: ShipCompliance[];
+
+  constructor(initial: ShipCompliance[] = []) {
+    this.records = initial;
+  }
+
+  async findAll(): Promise<ShipCompliance[]> {
+    return [...this.records];
+  }
+
+  async findByShipId(shipId: number): Promise<ShipCompliance[]> {
+    return this.records.filter((r) => r.shipId === shipId);
+  }
+
+  async findByShipIdAndYear(
+    shipId: number,
+    year: number
+  ): Promise<ShipCompliance | null> {
+    return (
+      this.records.find((r) => r.shipId === shipId && r.year === year) ?? null
+    );
+  }
+
+  async create(
+    data: Omit<ShipCompliance, "id" | "createdAt" | "updatedAt">
+  ): Promise<ShipCompliance> {
+    const created = makeShipCompliance({
+      ...data,
+      id: (this.records.at(-1)?.id ?? 0) + 1,
+    });
+    this.records.push(created);
+    return created;
+  }
+
+  async deleteByShipId(shipId: number): Promise<void> {
+    this.records = this.records.filter((r) => r.shipId !== shipId);
+  }
+
+  async findByYear(year: number): Promise<ShipCompliance[]> {
+    return this.records.filter((r) => r.year === year);
+  }
+
+  async updateByShipIdAndYear(
+    shipId: number,
+    year: number,
+    data: Partial<ShipCompliance>
+  ): Promise<ShipCompliance> {
+    const idx = this.records.findIndex(
+      (r) => r.shipId === shipId && r.year === year
+    );
+    if (idx === -1) throw new Error("Record not found");
+    this.records[idx] = { ...this.records[idx]!, ...data };
+    return this.records[idx]!;
+  }
+
+  async updateCb(shipId: number, year: number, newCb: number): Promise<ShipCompliance> {
+    const idx = this.records.findIndex(
+      (r) => r.shipId === shipId && r.year === year
+    );
+    if (idx === -1) {
+      // Create if doesn't exist
+      const created = makeShipCompliance({
+        shipId,
+        year,
+        cbGco2eq: newCb,
+        id: (this.records.at(-1)?.id ?? 0) + 1,
+      });
+      this.records.push(created);
+      return created;
+    }
+    this.records[idx] = {
+      ...this.records[idx]!,
+      cbGco2eq: newCb,
+      updatedAt: new Date(),
+    };
+    return this.records[idx]!;
+  }
+}
+
 // 🧪 Tests
 describe("PoolingService", () => {
   let poolRepo: MockPoolRepository;
   let poolMemberRepo: MockPoolMemberRepository;
+  let complianceRepo: MockShipComplianceRepository;
   let service: PoolingService;
 
   beforeEach(() => {
     poolRepo = new MockPoolRepository();
     poolMemberRepo = new MockPoolMemberRepository();
-    service = new PoolingService(poolRepo, poolMemberRepo);
+    complianceRepo = new MockShipComplianceRepository();
+    service = new PoolingService(poolRepo, poolMemberRepo, complianceRepo);
   });
 
   // ➕ createPool - Basic creation

@@ -1,14 +1,14 @@
 import { IPoolRepository } from "../../ports/pool.repository.port.js";
 import { IPoolMemberRepository } from "../../ports/poolMember.repository.port.js";
+import { IShipComplianceRepository } from "../../ports/shipCompliance.repository.port.js";
 import { Pool } from "../../domain/pool.entity.js";
 import { PoolMember } from "../../domain/poolMember.entity.js";
-import { PrismaShipComplianceRepository } from "../../../adapters/outbound/prisma/prisma.shipCompliance.repository.js";
-import prisma from "../../../infrastructure/db/prisma.js"; // ensure this is your default prisma export
 
 export class PoolingService {
   constructor(
     private readonly poolRepo: IPoolRepository,
-    private readonly poolMemberRepo: IPoolMemberRepository
+    private readonly poolMemberRepo: IPoolMemberRepository,
+    private readonly complianceRepo: IShipComplianceRepository
   ) {}
 
   /**
@@ -64,18 +64,13 @@ export class PoolingService {
       );
     }
 
-    // ✅ Transaction ensures pool + members + compliance update all succeed or rollback together
-    await prisma.$transaction(async (tx) => {
-      // Insert pool members
-      await this.poolMemberRepo.bulkCreate(updatedMembers);
+    // Insert pool members
+    await this.poolMemberRepo.bulkCreate(updatedMembers);
 
-      // Update compliance CBs for all ships
-      const complianceRepo = new PrismaShipComplianceRepository();
-
-      for (const m of updatedMembers) {
-        await complianceRepo.updateCb(m.shipId, year, m.cbAfter);
-      }
-    });
+    // Update compliance CBs for all ships
+    for (const m of updatedMembers) {
+      await this.complianceRepo.updateCb(m.shipId, year, m.cbAfter);
+    }
 
     return { pool, members: updatedMembers };
   }

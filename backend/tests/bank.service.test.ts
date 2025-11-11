@@ -143,6 +143,19 @@ class MockShipComplianceRepository implements IShipComplianceRepository {
     this.records[idx] = { ...this.records[idx]!, ...data };
     return this.records[idx]!;
   }
+
+  async updateCb(shipId: number, year: number, newCb: number): Promise<ShipCompliance> {
+    const idx = this.records.findIndex(
+      (r) => r.shipId === shipId && r.year === year
+    );
+    if (idx === -1) throw new Error("Record not found");
+    this.records[idx] = {
+      ...this.records[idx]!,
+      cbGco2eq: newCb,
+      updatedAt: new Date(),
+    };
+    return this.records[idx]!;
+  }
 }
 
 // 🧪 Tests
